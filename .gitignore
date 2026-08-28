@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local Claude Code settings
+/.claude/settings.local.json
+
+# Unrelated personal files that were placed under scripts/ (not part of Adhyan)
+/scripts/deck/
+/scripts/original.pptx
+/scripts/pptx_dump.txt
+/scripts/read_pptx.py
+/scripts/build_internships_xlsx.py
+/scripts/md_to_pdf.py
