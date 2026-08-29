@@ -1,18 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  CheckCircle2,
-  ChevronLeft,
-  Clock,
-  ListChecks,
-  Play,
-  RotateCcw,
-} from "lucide-react";
+import { CheckCircle2, ChevronLeft, Clock, ListChecks } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getCatalogCourse, getTestResults, getTestsForCourse } from "@/lib/data/store";
+import {
+  getCatalogCourse,
+  getCourseTopicSummaries,
+  getTestResults,
+  getTestsForCourse,
+} from "@/lib/data/store";
 import { startTestAction } from "@/app/actions";
+import { StartTestDialog } from "@/components/quiz/start-test-dialog";
+import { PER_TOPIC_PER_TEST } from "@/lib/data/ell100-topics";
 
 export default async function CourseTestsPage({
   params,
@@ -25,6 +24,8 @@ export default async function CourseTestsPage({
 
   const tests = getTestsForCourse(courseId);
   const results = getTestResults();
+  const isEll = courseId === "ell-1000";
+  const topicCount = getCourseTopicSummaries(courseId).length;
 
   return (
     <div className="space-y-6">
@@ -83,23 +84,16 @@ export default async function CourseTestsPage({
 
                 <div className="mt-5 flex-1" />
 
-                <form action={startTestAction.bind(null, test.id)}>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    variant={attempted ? "outline" : "primary"}
-                  >
-                    {attempted ? (
-                      <>
-                        <RotateCcw className="h-5 w-5" /> Retake test
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-5 w-5" /> Start test
-                      </>
-                    )}
-                  </Button>
-                </form>
+                <StartTestDialog
+                  testTitle={test.title}
+                  courseTitle={course.title}
+                  questionCount={test.questionCount}
+                  durationSec={test.durationSec}
+                  topicCount={isEll ? topicCount : undefined}
+                  perTopic={isEll ? PER_TOPIC_PER_TEST : undefined}
+                  attempted={attempted}
+                  action={startTestAction.bind(null, test.id)}
+                />
               </div>
             </Card>
           );
