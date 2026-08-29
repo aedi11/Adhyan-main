@@ -75,7 +75,8 @@ export default function TeacherPage() {
         {/* Upload */}
         <h2 className="mt-10 text-xl font-extrabold">Add questions</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upload a Word (.docx) bank — new questions are added to the ELL 1000 course.
+          Upload a Word (.docx) bank — new questions are added to the Introduction to Electrical
+          Engineering course.
         </p>
         <div className="mt-4">
           <QuestionUpload uploadedCount={uploadedCount} />

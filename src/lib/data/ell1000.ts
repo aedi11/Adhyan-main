@@ -14,9 +14,9 @@ import bank from "./ell1000-bank.json";
 import { ELL100_QUESTIONS } from "./ell100";
 import { ELL100_TOPICS as LEGACY_TOPICS } from "./ell100-topics";
 
-export const ELL1000_COURSE_TITLE = "ELL 1000: Introduction to Electrical Engineering";
+export const ELL1000_COURSE_TITLE = "Introduction to Electrical Engineering";
 export const ELL1000_COURSE_SUBTITLE =
-  "Introduction to Electrical Engineering · NPTEL syllabus (Prof. Bhim Singh, IIT Delhi)";
+  "NPTEL syllabus · Prof. Bhim Singh, IIT Delhi";
 
 export interface BankTopic {
   id: string;

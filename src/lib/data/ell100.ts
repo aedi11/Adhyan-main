@@ -8,7 +8,7 @@
  */
 import type { AuthoredQuestion } from "@/lib/domain/types";
 
-export const ELL100_COURSE_TITLE = "ELL 1000: Introduction to Electrical Engineering";
+export const ELL100_COURSE_TITLE = "Introduction to Electrical Engineering";
 export const ELL100_COURSE_SUBTITLE = "Department of Electrical Engineering · Lecture Quiz-I";
 
 export const ELL100_QUESTIONS: AuthoredQuestion[] = [

@@ -518,7 +518,8 @@ export interface CatalogCourse {
   testCount: number;
 }
 
-export const ELL100_ID = "ell-1000";
+/** Course id (also the URL slug) for the Introduction to Electrical Engineering course. */
+export const ELL100_ID = "intro-electrical-engineering";
 
 /** Append parsed questions to the ELL 1000 bank; returns its new total size. */
 export function addUploadedQuestions(qs: AuthoredQuestion[]): number {
@@ -563,7 +564,7 @@ export function getCatalog(): CatalogCourse[] {
       title: ELL1000_COURSE_TITLE,
       subtitle: ELL1000_COURSE_SUBTITLE,
       description:
-        "Concept and numerical MCQs from the ELL100 lecture quiz — basics, circuit laws, network theorems, and transients.",
+        "Concept and numerical MCQs across the full syllabus — circuit elements, circuit laws, network theorems, transients, AC circuits, electronics and machines.",
       subject: "Electrical Engineering",
     },
     ...DEMO_COURSES.map((c) => ({

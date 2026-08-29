@@ -17,7 +17,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-OUT_DIR = r"C:\Users\Duke\Downloads\ELL1000-Question-Bank"
+OUT_DIR = r"C:\Users\Duke\Downloads\Introduction-to-Electrical-Engineering-Question-Bank"
+COURSE_NAME = "Introduction to Electrical Engineering"
 FONTS = r"C:\Windows\Fonts"
 pdfmetrics.registerFont(TTFont("AppFont", os.path.join(FONTS, "arial.ttf")))
 pdfmetrics.registerFont(TTFont("AppFont-Bold", os.path.join(FONTS, "arialbd.ttf")))
@@ -2125,7 +2126,7 @@ def build_pdf(key):
     h1 = ParagraphStyle("h1", parent=styles["Title"], fontName="AppFont-Bold", fontSize=20)
     sub = ParagraphStyle("sub", parent=styles["Normal"], fontName="AppFont", fontSize=11, textColor=colors.grey, spaceAfter=4)
 
-    story = [Paragraph("ELL 1000 \u2014 Introduction to Electrical Engineering", h1),
+    story = [Paragraph(COURSE_NAME, h1),
              Paragraph(sanitize("Question Bank \u00b7 " + title), sub),
              Paragraph(f"{len(questions)} multiple-choice questions with answers &amp; worked solutions. "
                        "Numerical answers are computed (verified correct).", sub),
@@ -2143,7 +2144,9 @@ def build_pdf(key):
 
     slug = title.split(chr(0x2014))[1].strip().split("(")[0].strip()
     slug = re.sub(r"[^A-Za-z0-9]+", "_", slug).strip("_")
-    out_path = os.path.join(OUT_DIR, f"ELL1000_{key}_{slug}.pdf")
+    num = int(key.lstrip("t"))
+    os.makedirs(OUT_DIR, exist_ok=True)
+    out_path = os.path.join(OUT_DIR, f"Topic{num:02d}_{slug}.pdf")
     doc = SimpleDocTemplate(out_path, pagesize=A4, topMargin=15 * mm, bottomMargin=15 * mm,
                             leftMargin=16 * mm, rightMargin=16 * mm, title=title)
     doc.build(story)

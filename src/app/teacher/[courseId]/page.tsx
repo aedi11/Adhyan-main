@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Layers, ListChecks } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getCatalogCourse, getCourseTopicSummaries } from "@/lib/data/store";
+import { ELL100_ID, getCatalogCourse, getCourseTopicSummaries } from "@/lib/data/store";
 import { StudioHeader } from "@/components/teacher/studio-header";
 import { PER_TOPIC_PER_TEST } from "@/lib/data/ell100-topics";
 
@@ -17,7 +17,7 @@ export default async function TeacherCoursePage({
   if (!course) notFound();
 
   const topics = getCourseTopicSummaries(courseId);
-  const isEll = courseId === "ell-1000";
+  const isEll = courseId === ELL100_ID;
 
   return (
     <div className="min-h-full">

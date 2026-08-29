@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronLeft, Clock, ListChecks } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
+  ELL100_ID,
   getCatalogCourse,
   getCourseTopicSummaries,
   getTestResults,
@@ -24,7 +25,7 @@ export default async function CourseTestsPage({
 
   const tests = getTestsForCourse(courseId);
   const results = getTestResults();
-  const isEll = courseId === "ell-1000";
+  const isEll = courseId === ELL100_ID;
   const topicCount = getCourseTopicSummaries(courseId).length;
 
   return (
@@ -40,7 +41,7 @@ export default async function CourseTestsPage({
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           {course.subtitle} · {course.questionCount} questions · {course.testCount} timed test
           {course.testCount === 1 ? "" : "s"} (2 hours each)
-          {course.id === "ell-1000"
+          {isEll
             ? " — every test covers all topics, with a different set of questions per student."
             : "."}
         </p>
