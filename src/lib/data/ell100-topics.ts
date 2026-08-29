@@ -63,8 +63,11 @@ export const ELL100_TOPICS: Ell100Topic[] = [
   },
 ];
 
-/** How many questions each test draws from every topic (so all topics appear). */
-export const PER_TOPIC_PER_TEST = 2;
+/**
+ * How many questions each test draws from EVERY topic, so a test always spans
+ * the whole syllabus. 21 topics × 5 = 105 questions per 2-hour test.
+ */
+export const PER_TOPIC_PER_TEST = 5;
 
 /** Number of tests offered for the ELL 1000 course. */
 export const ELL100_TEST_COUNT = 10;

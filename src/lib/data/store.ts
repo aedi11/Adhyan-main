@@ -22,15 +22,13 @@ import type {
 import type { AuthoredQuestion } from "@/lib/domain/types";
 import { DEMO_COURSES, DEMO_QUESTIONS } from "./seed";
 import {
-  ELL100_COURSE_SUBTITLE,
-  ELL100_COURSE_TITLE,
-  ELL100_QUESTIONS,
-} from "./ell100";
-import {
-  ELL100_TEST_COUNT,
-  ELL100_TOPICS,
-  PER_TOPIC_PER_TEST,
-} from "./ell100-topics";
+  ELL1000_BY_ID,
+  ELL1000_COURSE_SUBTITLE,
+  ELL1000_COURSE_TITLE,
+  ELL1000_QUESTIONS,
+  ELL1000_TOPICS,
+} from "./ell1000";
+import { ELL100_TEST_COUNT, PER_TOPIC_PER_TEST } from "./ell100-topics";
 import { generateVariant, hashSeed, toPublicVariant } from "@/lib/domain/transform";
 import { gradeAnswer, type SubmittedAnswer } from "@/lib/domain/grading";
 import {
@@ -100,7 +98,7 @@ function db() {
 /** Look up an authored question across all banks (ELL 1000, demo seed, uploads). */
 function getQuestion(qid: string): AuthoredQuestion | undefined {
   return (
-    ELL100_QUESTIONS.find((q) => q.id === qid) ??
+    ELL1000_BY_ID.get(qid) ??
     DEMO_QUESTIONS[qid] ??
     db().uploaded.find((q) => q.id === qid)
   );
@@ -524,9 +522,9 @@ export const ELL100_ID = "ell-1000";
 
 /** Append parsed questions to the ELL 1000 bank; returns its new total size. */
 export function addUploadedQuestions(qs: AuthoredQuestion[]): number {
-  const base = ELL100_QUESTIONS.length + db().uploaded.length;
+  const base = ELL1000_QUESTIONS.length + db().uploaded.length;
   qs.forEach((q, i) => db().uploaded.push({ ...q, id: `uq-${base + i + 1}` }));
-  return ELL100_QUESTIONS.length + db().uploaded.length;
+  return ELL1000_QUESTIONS.length + db().uploaded.length;
 }
 
 /** Remove uploaded extras (the built-in ELL 1000 questions always remain). */
@@ -537,20 +535,20 @@ export function clearUploadedQuestions(): void {
 
 /** Total questions in the ELL 1000 bank (built-in + uploaded extras). */
 export function getUploadedCount(): number {
-  return ELL100_QUESTIONS.length + db().uploaded.length;
+  return ELL1000_QUESTIONS.length + db().uploaded.length;
 }
 
 export function getBankTitle(): string {
-  return ELL100_COURSE_TITLE;
+  return ELL1000_COURSE_TITLE;
 }
 export function getBankSubtitle(): string {
-  return ELL100_COURSE_SUBTITLE;
+  return ELL1000_COURSE_SUBTITLE;
 }
 
 /** Flat question-id list for a course — the bank that gets split into tests. */
 function courseQuestionIds(courseId: string): string[] {
   if (courseId === ELL100_ID) {
-    return [...ELL100_QUESTIONS.map((q) => q.id), ...db().uploaded.map((q) => q.id)];
+    return [...ELL1000_QUESTIONS.map((q) => q.id), ...db().uploaded.map((q) => q.id)];
   }
   const course = DEMO_COURSES.find((c) => c.id === courseId);
   if (!course) return [];
@@ -562,8 +560,8 @@ export function getCatalog(): CatalogCourse[] {
   const base = [
     {
       id: ELL100_ID,
-      title: ELL100_COURSE_TITLE,
-      subtitle: ELL100_COURSE_SUBTITLE,
+      title: ELL1000_COURSE_TITLE,
+      subtitle: ELL1000_COURSE_SUBTITLE,
       description:
         "Concept and numerical MCQs from the ELL100 lecture quiz — basics, circuit laws, network theorems, and transients.",
       subject: "Electrical Engineering",
@@ -611,7 +609,7 @@ function authoredCorrectText(q: AuthoredQuestion): string {
 /** Questions grouped by topic (ELL 1000) or by topic→levels (demo courses). */
 export function getCourseTopics(courseId: string): CourseTopicView[] {
   if (courseId === ELL100_ID) {
-    return ELL100_TOPICS.map((t) => ({
+    return ELL1000_TOPICS.map((t) => ({
       id: t.id,
       title: t.title,
       blurb: t.blurb,
@@ -640,10 +638,42 @@ export function getCourseTopics(courseId: string): CourseTopicView[] {
   }));
 }
 
+export interface TopicSummary {
+  id: string;
+  title: string;
+  blurb: string;
+  count: number;
+}
+
+/** Lightweight topic list (no question bodies) for the teacher's course page. */
+export function getCourseTopicSummaries(courseId: string): TopicSummary[] {
+  if (courseId === ELL100_ID) {
+    return ELL1000_TOPICS.map((t) => ({
+      id: t.id,
+      title: t.title,
+      blurb: t.blurb,
+      count: t.questionIds.length,
+    }));
+  }
+  const course = DEMO_COURSES.find((c) => c.id === courseId);
+  if (!course) return [];
+  return course.topics.map((t) => ({
+    id: t.id,
+    title: t.title,
+    blurb: `${t.levels.length} levels`,
+    count: t.levels.reduce((a, l) => a + l.questionIds.length, 0),
+  }));
+}
+
+/** One topic with its questions (teacher drill-down page). */
+export function getCourseTopic(courseId: string, topicId: string): CourseTopicView | undefined {
+  return getCourseTopics(courseId).find((t) => t.id === topicId);
+}
+
 /** A course's tests. ELL 1000 uses topic-balanced tests; demo courses chunk by 100. */
 export function getTestsForCourse(courseId: string): TestMeta[] {
   if (courseId === ELL100_ID) {
-    const perTest = ELL100_TOPICS.length * PER_TOPIC_PER_TEST;
+    const perTest = ELL1000_TOPICS.length * PER_TOPIC_PER_TEST;
     return Array.from({ length: ELL100_TEST_COUNT }, (_, i) => ({
       id: `${courseId}#${i + 1}`,
       courseId,
@@ -689,7 +719,7 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
  */
 function selectEll100Questions(attemptId: string, testIndex: number): string[] {
   const picks: string[] = [];
-  for (const t of ELL100_TOPICS) {
+  for (const t of ELL1000_TOPICS) {
     const shuffled = seededShuffle(t.questionIds, hashSeed(attemptId, t.id, testIndex));
     picks.push(...shuffled.slice(0, PER_TOPIC_PER_TEST));
   }

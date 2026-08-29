@@ -50,3 +50,7 @@ next-env.d.ts
 /scripts/read_pptx.py
 /scripts/build_internships_xlsx.py
 /scripts/md_to_pdf.py
+
+# Python bytecode
+__pycache__/
+*.pyc
