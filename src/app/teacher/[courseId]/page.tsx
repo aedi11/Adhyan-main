@@ -3,9 +3,14 @@ import { notFound } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Layers, ListChecks } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ELL100_ID, getCatalogCourse, getCourseTopicSummaries } from "@/lib/data/store";
+import {
+  ELL100_ID,
+  getCatalogCourse,
+  getCourseTopicSummaries,
+  getTestsForCourse,
+  perTopicLabel,
+} from "@/lib/data/store";
 import { StudioHeader } from "@/components/teacher/studio-header";
-import { PER_TOPIC_PER_TEST } from "@/lib/data/ell100-topics";
 
 export default async function TeacherCoursePage({
   params,
@@ -17,6 +22,7 @@ export default async function TeacherCoursePage({
   if (!course) notFound();
 
   const topics = getCourseTopicSummaries(courseId);
+  const perTest = getTestsForCourse(courseId)[0]?.questionCount ?? 0;
   const isEll = courseId === ELL100_ID;
 
   return (
@@ -37,7 +43,7 @@ export default async function TeacherCoursePage({
           <Stat icon={ListChecks} value={course.testCount} label="Tests" />
           <Stat
             icon={ListChecks}
-            value={isEll ? topics.length * PER_TOPIC_PER_TEST : course.questionCount}
+            value={perTest}
             label="Q per test"
           />
         </div>
@@ -47,11 +53,10 @@ export default async function TeacherCoursePage({
             <div className="p-4 text-sm">
               <p className="font-bold text-primary">How the tests are built</p>
               <p className="mt-1 text-muted-foreground">
-                Each of the {course.testCount} tests runs for 2 hours and draws{" "}
-                <span className="font-bold">{PER_TOPIC_PER_TEST} questions from every one of the{" "}
-                {topics.length} topics</span> ({topics.length * PER_TOPIC_PER_TEST} questions per
-                test). The draw is seeded per student, so no two students get the same paper while
-                every topic is still covered.
+                Each of the {course.testCount} tests runs for 2 hours and contains{" "}
+                <span className="font-bold">{perTest} questions drawn from every one of the{" "}
+                {topics.length} topics</span> ({perTopicLabel()} per topic). The draw is seeded per
+                student, so no two students get the same paper while every topic is still covered.
               </p>
             </div>
           </Card>

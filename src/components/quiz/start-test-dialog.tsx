@@ -54,7 +54,8 @@ export function StartTestDialog({
   questionCount: number;
   durationSec: number;
   topicCount?: number;
-  perTopic?: number;
+  /** e.g. "4–5" — how many questions come from each topic. */
+  perTopic?: string;
   attempted: boolean;
   action: () => void | Promise<void>;
 }) {
@@ -149,8 +150,8 @@ export function StartTestDialog({
               </Item>
               {topicCount && perTopic ? (
                 <Item icon={Shuffle}>
-                  <b>Covers the whole syllabus.</b> {perTopic} questions are drawn from each of the{" "}
-                  {topicCount} topics, so nothing is left out.
+                  <b>Covers the whole syllabus.</b> Questions are drawn from every one of the{" "}
+                  {topicCount} topics ({perTopic} from each), so nothing is left out.
                 </Item>
               ) : (
                 <Item icon={Shuffle}>

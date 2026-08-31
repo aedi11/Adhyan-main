@@ -9,10 +9,10 @@ import {
   getCourseTopicSummaries,
   getTestResults,
   getTestsForCourse,
+  perTopicLabel,
 } from "@/lib/data/store";
 import { startTestAction } from "@/app/actions";
 import { StartTestDialog } from "@/components/quiz/start-test-dialog";
-import { PER_TOPIC_PER_TEST } from "@/lib/data/ell100-topics";
 
 export default async function CourseTestsPage({
   params,
@@ -91,7 +91,7 @@ export default async function CourseTestsPage({
                   questionCount={test.questionCount}
                   durationSec={test.durationSec}
                   topicCount={isEll ? topicCount : undefined}
-                  perTopic={isEll ? PER_TOPIC_PER_TEST : undefined}
+                  perTopic={isEll ? perTopicLabel() : undefined}
                   attempted={attempted}
                   action={startTestAction.bind(null, test.id)}
                 />

@@ -64,9 +64,15 @@ export const ELL100_TOPICS: Ell100Topic[] = [
 ];
 
 /**
- * How many questions each test draws from EVERY topic, so a test always spans
- * the whole syllabus. 21 topics × 5 = 105 questions per 2-hour test.
+ * Every test is exactly this many questions and still spans the whole syllabus:
+ * each topic contributes floor(TEST_QUESTION_COUNT / topics) questions, and the
+ * remainder is handed out one-per-topic on a rotation that shifts with the test
+ * index, so over the set of tests every topic gets the extra equally often.
+ * With 21 topics that is 4 from each topic plus a 5th from 16 of them = 100.
  */
+export const TEST_QUESTION_COUNT = 100;
+
+/** Legacy alias kept for the 7-topic structure below. */
 export const PER_TOPIC_PER_TEST = 5;
 
 /** Number of tests offered for the ELL 1000 course. */

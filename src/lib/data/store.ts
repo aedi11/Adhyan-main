@@ -28,7 +28,7 @@ import {
   ELL1000_QUESTIONS,
   ELL1000_TOPICS,
 } from "./ell1000";
-import { ELL100_TEST_COUNT, PER_TOPIC_PER_TEST } from "./ell100-topics";
+import { ELL100_TEST_COUNT, TEST_QUESTION_COUNT } from "./ell100-topics";
 import { generateVariant, hashSeed, toPublicVariant } from "@/lib/domain/transform";
 import { gradeAnswer, type SubmittedAnswer } from "@/lib/domain/grading";
 import {
@@ -674,13 +674,12 @@ export function getCourseTopic(courseId: string, topicId: string): CourseTopicVi
 /** A course's tests. ELL 1000 uses topic-balanced tests; demo courses chunk by 100. */
 export function getTestsForCourse(courseId: string): TestMeta[] {
   if (courseId === ELL100_ID) {
-    const perTest = ELL1000_TOPICS.length * PER_TOPIC_PER_TEST;
     return Array.from({ length: ELL100_TEST_COUNT }, (_, i) => ({
       id: `${courseId}#${i + 1}`,
       courseId,
       index: i,
       title: `Test ${i + 1}`,
-      questionCount: perTest,
+      questionCount: TEST_QUESTION_COUNT,
       durationSec: TEST_DURATION_SEC,
     }));
   }
@@ -713,17 +712,39 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
   return out;
 }
 
+/** Human-readable spread of questions per topic, e.g. "4" or "4–5". */
+export function perTopicLabel(): string {
+  const n = ELL1000_TOPICS.length;
+  const base = Math.floor(TEST_QUESTION_COUNT / n);
+  const extra = TEST_QUESTION_COUNT - base * n;
+  return extra === 0 ? `${base}` : `${base}–${base + 1}`;
+}
+
+/** How many questions each topic contributes to a given test (sums to 100). */
+export function topicQuota(testIndex: number): number[] {
+  const n = ELL1000_TOPICS.length;
+  const base = Math.floor(TEST_QUESTION_COUNT / n);
+  const extra = TEST_QUESTION_COUNT - base * n;
+  return ELL1000_TOPICS.map((_, i) => {
+    // Rotate which topics get the extra question so it evens out across tests.
+    const slot = (i - testIndex) % n;
+    const rotated = slot < 0 ? slot + n : slot;
+    return base + (rotated < extra ? 1 : 0);
+  });
+}
+
 /**
- * Topic-balanced per-student question set for one ELL 1000 test: draw
- * PER_TOPIC_PER_TEST from EVERY topic, seeded per attempt so two students
- * (attempts) get different questions while every topic stays covered.
+ * Topic-balanced per-student question set for one test: every topic contributes
+ * its quota (never zero), seeded per attempt so two students get different
+ * questions while the whole syllabus stays covered. Total = TEST_QUESTION_COUNT.
  */
 function selectEll100Questions(attemptId: string, testIndex: number): string[] {
+  const quota = topicQuota(testIndex);
   const picks: string[] = [];
-  for (const t of ELL1000_TOPICS) {
+  ELL1000_TOPICS.forEach((t, i) => {
     const shuffled = seededShuffle(t.questionIds, hashSeed(attemptId, t.id, testIndex));
-    picks.push(...shuffled.slice(0, PER_TOPIC_PER_TEST));
-  }
+    picks.push(...shuffled.slice(0, quota[i]));
+  });
   return picks;
 }
 
