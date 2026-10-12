@@ -26,7 +26,7 @@ const ALL_BADGES = [
 
 export default function ProgressPage() {
   // Level-based progress/mastery is paused in tests mode (see APP_MODE).
-  if (APP_MODE === "tests") redirect("/learn");
+  if (APP_MODE === "tests") redirect("/analytics");
 
   const activeCourseId = getActiveCourseId();
   const course = getCourse(activeCourseId ?? undefined);

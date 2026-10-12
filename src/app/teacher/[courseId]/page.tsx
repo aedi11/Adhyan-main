@@ -1,16 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, BookOpen, FileText, Layers, ListChecks } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  ELL100_ID,
-  getCatalogCourse,
-  getCourseTopicSummaries,
-  getTestsForCourse,
-  perTopicLabel,
-} from "@/lib/data/store";
-import { StudioHeader } from "@/components/teacher/studio-header";
+import { PageHeader } from "@/components/page-header";
+import { getCourseTopicSummaries, perTopicLabel } from "@/lib/data/store";
+import { getCourseOffer } from "@/lib/server/tests";
 
 export default async function TeacherCoursePage({
   params,
@@ -18,100 +12,66 @@ export default async function TeacherCoursePage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  const course = getCatalogCourse(courseId);
+  const course = getCourseOffer(courseId);
   if (!course) notFound();
-
   const topics = getCourseTopicSummaries(courseId);
-  const perTest = getTestsForCourse(courseId)[0]?.questionCount ?? 0;
-  const isEll = courseId === ELL100_ID;
 
   return (
-    <div className="min-h-full">
-      <StudioHeader back="/teacher" />
+    <div className="space-y-8">
+      <PageHeader
+        back={{ href: "/teacher", label: "Teacher Studio" }}
+        eyebrow={course.subject}
+        title={course.title}
+        description={course.subtitle}
+      />
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <Badge variant="muted">
-          <BookOpen className="h-3.5 w-3.5" /> {course.subject}
-        </Badge>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">{course.title}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{course.subtitle}</p>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Topics" value={topics.length} />
+        <Stat label="Questions in bank" value={course.questionBank.toLocaleString("en-IN")} />
+        <Stat label="Tests" value={course.testCount} />
+        <Stat label="Questions per test" value={course.questionsPerTest} />
+      </div>
 
-        {/* Summary */}
-        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat icon={Layers} value={topics.length} label="Topics" />
-          <Stat icon={FileText} value={course.questionCount} label="Questions" />
-          <Stat icon={ListChecks} value={course.testCount} label="Tests" />
-          <Stat
-            icon={ListChecks}
-            value={perTest}
-            label="Q per test"
-          />
-        </div>
-
-        {isEll && (
-          <Card className="mt-5 border-primary/30 bg-primary-soft/40">
-            <div className="p-4 text-sm">
-              <p className="font-bold text-primary">How the tests are built</p>
-              <p className="mt-1 text-muted-foreground">
-                Each of the {course.testCount} tests runs for 2 hours and contains{" "}
-                <span className="font-bold">{perTest} questions drawn from every one of the{" "}
-                {topics.length} topics</span> ({perTopicLabel()} per topic). The draw is seeded per
-                student, so no two students get the same paper while every topic is still covered.
-              </p>
-            </div>
-          </Card>
-        )}
-
-        {/* Topics */}
-        <h2 className="mt-8 text-xl font-extrabold">Questions by topic</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Open a topic to review its questions, answers and per-student variants.
+      <Card className="p-5 text-sm">
+        <p className="font-semibold">How each test is assembled</p>
+        <p className="mt-1 text-muted-foreground">
+          Every test has {course.questionsPerTest} questions in 2 hours, with {perTopicLabel()} from each
+          of the {topics.length} topics, in syllabus order. Questions are drawn per student, and each
+          numerical question is served with one of several re-computed value sets, so two students
+          never share a paper. Students on the free trial get a {course.trialQuestions}-question paper
+          for Tests 1–{course.trialTests}.
         </p>
+      </Card>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <section>
+        <h2 className="text-lg font-semibold">Topics</h2>
+        <Card className="mt-4 divide-y overflow-hidden">
           {topics.map((t, i) => (
-            <Link key={t.id} href={`/teacher/${courseId}/${t.id}`} className="block">
-              <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                <div className="flex items-start gap-3 p-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-black text-primary-foreground">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-extrabold">{t.title}</h3>
-                      <Badge variant="muted">{t.count} Q</Badge>
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{t.blurb}</p>
-                    <span className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary">
-                      View questions <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
-                </div>
-              </Card>
+            <Link
+              key={t.id}
+              href={`/teacher/${courseId}/${t.id}`}
+              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-muted"
+            >
+              <span className="w-6 text-right text-sm tabular-nums text-muted-foreground">{i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{t.title}</p>
+                <p className="truncate text-sm text-muted-foreground">{t.blurb}</p>
+              </div>
+              <span className="text-sm tabular-nums text-muted-foreground">{t.count} questions</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </Link>
           ))}
-        </div>
-      </main>
+        </Card>
+      </section>
     </div>
   );
 }
 
-function Stat({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  value: React.ReactNode;
-  label: string;
-}) {
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <Card>
-      <div className="flex flex-col items-center gap-1 p-4 text-center">
-        <Icon className="h-5 w-5 text-primary" />
-        <div className="text-2xl font-black">{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-      </div>
+    <Card className="p-5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
     </Card>
   );
 }

@@ -54,3 +54,9 @@ next-env.d.ts
 # Python bytecode
 __pycache__/
 *.pyc
+
+# local dev data (accounts, attempts) when Supabase is not configured
+/.data/
+
+# admin credentials (never commit)
+ADMIN-LOGIN.txt

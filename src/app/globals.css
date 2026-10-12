@@ -4,46 +4,71 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f7f7fb;
+  --background: #f5f6fb;
   --surface: #ffffff;
-  --surface-muted: #f1f1f7;
-  --foreground: #1a1a2e;
-  --muted-foreground: #6b6b80;
-  --border: #e6e6ef;
+  --surface-muted: #f0f2f8;
+  --foreground: #161a33;
+  --muted-foreground: #646b85;
+  --border: #e3e6f0;
 
-  --primary: #6d5efc;
+  --primary: #4f46e5;
   --primary-foreground: #ffffff;
-  --primary-soft: #ece9ff;
+  --primary-soft: #eceafd;
 
-  --accent: #ff8a3d;
+  --accent: #e8a33d;
   --accent-foreground: #ffffff;
 
-  --success: #1bbf83;
-  --success-soft: #dff7ee;
-  --warning: #f5b21a;
-  --danger: #f0436a;
+  --success: #16a34a;
+  --success-soft: #e7f6ec;
+  --warning: #d97706;
+  --warning-soft: #fdf3e2;
+  --danger: #dc2626;
+  --danger-soft: #fdecec;
 
-  --xp: #ffb020;
-  --streak: #ff6b3d;
+  /* Navy application header */
+  --nav: #1f1d4d;
+  --nav-foreground: #ffffff;
+  --nav-muted: #a9a8d6;
 
-  --radius: 1rem;
+  /* Kept for the paused levels-mode screens */
+  --xp: #e8a33d;
+  --streak: #dc2626;
+  --sidebar: #1f1d4d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted: #a9a8d6;
+  --sidebar-active: #2d2a66;
+  --sidebar-border: #2d2a66;
+
+  --radius: 0.75rem;
 }
 
 .dark {
-  --background: #0d0d17;
-  --surface: #161623;
-  --surface-muted: #1e1e2e;
-  --foreground: #ededf5;
-  --muted-foreground: #9a9ab0;
-  --border: #2a2a3d;
+  --background: #0d0f1e;
+  --surface: #161933;
+  --surface-muted: #1d2140;
+  --foreground: #e7e8f5;
+  --muted-foreground: #9599b8;
+  --border: #272b4d;
 
-  --primary: #8b7cff;
+  --primary: #7c74f6;
   --primary-foreground: #ffffff;
-  --primary-soft: #211f3a;
+  --primary-soft: #23214d;
 
-  --accent: #ff9d5c;
-  --success: #2dd99a;
-  --success-soft: #14342a;
+  --accent: #f0b14f;
+  --success: #22c55e;
+  --success-soft: #11291c;
+  --warning: #f59e0b;
+  --warning-soft: #2c2210;
+  --danger: #f05252;
+  --danger-soft: #2d1416;
+
+  --nav: #12112e;
+  --nav-foreground: #ffffff;
+  --nav-muted: #9a99c9;
+
+  --sidebar: #12112e;
+  --sidebar-active: #23214d;
+  --sidebar-border: #23214d;
 }
 
 @theme inline {
@@ -64,14 +89,25 @@
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-nav: var(--nav);
+  --color-nav-foreground: var(--nav-foreground);
+  --color-nav-muted: var(--nav-muted);
 
   --color-xp: var(--xp);
   --color-streak: var(--streak);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
 
   --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 0.4rem);
-  --radius-sm: calc(var(--radius) - 0.6rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-sm: calc(var(--radius) - 0.5rem);
 
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
@@ -92,7 +128,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Prevent question text selection / copy on quiz surfaces (anti-theft deterrent) */
+/* Prevent question text selection / copy on test surfaces (anti-theft deterrent) */
 .no-select {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -100,12 +136,10 @@ body {
   -webkit-touch-callout: none;
 }
 
-/* Subtle scrollbar */
+/* Keep multi-line question text (e.g. true/false statements) */
+.prompt-text {
+  white-space: pre-line;
+}
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 999px; }
-
-@keyframes pop-in {
-  0% { transform: scale(0.9); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.animate-pop-in { animation: pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }

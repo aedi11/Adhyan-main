@@ -44,7 +44,7 @@ export function Ring({
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-xl font-black leading-none">{label ?? `${Math.round(pct)}%`}</span>
+        <span className="text-xl font-semibold leading-none">{label ?? `${Math.round(pct)}%`}</span>
         {sublabel && <span className="text-[10px] text-muted-foreground">{sublabel}</span>}
       </div>
     </div>

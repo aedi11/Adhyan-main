@@ -24,6 +24,16 @@ export interface AuthoredOption {
 }
 
 /**
+ * One concrete, pre-computed version of a numerical question (same formula,
+ * different given values → its own computed answer and worked solution).
+ */
+export interface QuestionInstance {
+  prompt: string;
+  options: AuthoredOption[];
+  explanation?: string;
+}
+
+/**
  * The teacher-authored question. The canonical answer lives here but in
  * production the sensitive fields live in `question_secrets` (service-role
  * only) — see PROJECT_PLAN.md. The transform engine derives per-student
@@ -46,6 +56,8 @@ export interface AuthoredQuestion {
   aiParaphrase?: boolean; // theory-question wording variation (teacher-approved)
   explanation?: string;
   media?: string; // optional figure/diagram URL shown with the question
+  /** Extra re-computed value sets; a variant picks one of [base, ...instances]. */
+  instances?: QuestionInstance[];
 }
 
 export interface VariantOption {
@@ -68,8 +80,11 @@ export interface QuestionVariant {
   answerKey: {
     optionIds?: string[]; // correct option id(s)
     value?: string | number; // for integer / fill_blank
+    unit?: string; // unit for a numeric short answer, e.g. "Ω"
   };
   explanation?: string;
+  /** Short-answer unit shown next to the input box (safe to reveal). */
+  unit?: string;
 }
 
 /** What actually reaches the client — no answer key. */
