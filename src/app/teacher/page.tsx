@@ -1,87 +1,76 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, FileText, Layers, ListChecks, Shield, Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { getCatalog, getCourseTopics, getUploadedCount } from "@/lib/data/store";
+import { PageHeader } from "@/components/page-header";
+import { getCourseTopicSummaries, getUploadedCount } from "@/lib/data/store";
+import { listCourses } from "@/lib/server/tests";
 import { QuestionUpload } from "@/components/teacher/question-upload";
-import { StudioHeader } from "@/components/teacher/studio-header";
-import { BRAND_TAGLINE } from "@/lib/config";
 
 export default function TeacherPage() {
-  const courses = getCatalog();
-  const uploadedCount = getUploadedCount();
+  const courses = listCourses();
 
   return (
-    <div className="min-h-full">
-      <StudioHeader back="/" />
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Teacher Studio"
+        title="Courses & question banks"
+        description="Review questions topic by topic and preview the variants each student receives."
+      />
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <Badge variant="primary" className="mb-2">
-          <Sparkles className="h-3.5 w-3.5" /> {BRAND_TAGLINE}
-        </Badge>
-        <h1 className="text-3xl font-black tracking-tight">Teacher Studio</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Open a course to review its questions topic-by-topic and preview the per-student variants.
-          Grading stays on the server — answer keys never reach the browser.
-        </p>
-
-        <Card className="mt-6">
-          <div className="flex items-center gap-3 p-5">
-            <Shield className="h-6 w-6 text-success" />
-            <div>
-              <p className="font-bold">IP protection on</p>
-              <p className="text-sm text-muted-foreground">
-                Server-side grading · per-student question variants · answer keys never sent to
-                browsers.
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Courses */}
-        <h2 className="mt-8 text-xl font-extrabold">Courses</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {courses.map((course) => {
-            const topics = getCourseTopics(course.id);
-            return (
-              <Link key={course.id} href={`/teacher/${course.id}`} className="block">
-                <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                  <div className="p-5">
-                    <Badge variant="muted">
-                      <BookOpen className="h-3.5 w-3.5" /> {course.subject}
-                    </Badge>
-                    <h3 className="mt-2 text-lg font-extrabold">{course.title}</h3>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="muted">
-                        <Layers className="h-3.5 w-3.5" /> {topics.length} topics
-                      </Badge>
-                      <Badge variant="muted">
-                        <FileText className="h-3.5 w-3.5" /> {course.questionCount} questions
-                      </Badge>
-                      <Badge variant="muted">
-                        <ListChecks className="h-3.5 w-3.5" /> {course.testCount} tests
-                      </Badge>
-                    </div>
-                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">
-                      View questions by topic <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
-                </Card>
-              </Link>
-            );
-          })}
+      <Card className="flex items-start gap-3 p-5">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" />
+        <div className="text-sm">
+          <p className="font-semibold">Question protection is on</p>
+          <p className="mt-0.5 text-muted-foreground">
+            Grading happens on the server and answer keys never reach the browser. Every student
+            receives a different paper: different questions per topic, re-computed numerical values,
+            varied formats and shuffled options.
+          </p>
         </div>
+      </Card>
 
-        {/* Upload */}
-        <h2 className="mt-10 text-xl font-extrabold">Add questions</h2>
+      <section>
+        <h2 className="text-lg font-semibold">Courses</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {courses.map((c) => (
+            <Link key={c.id} href={`/teacher/${c.id}`} className="group block">
+              <Card className="h-full p-6 transition-shadow group-hover:shadow-md">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {c.subject}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold">{c.title}</h3>
+                <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                  <Fact label="Topics" value={getCourseTopicSummaries(c.id).length} />
+                  <Fact label="Questions" value={c.questionBank.toLocaleString("en-IN")} />
+                  <Fact label="Tests" value={`${c.testCount} × ${c.questionsPerTest}`} />
+                </dl>
+                <span className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Open question bank <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold">Upload questions</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upload a Word (.docx) bank — new questions are added to the Introduction to Electrical
-          Engineering course.
+          Add a Word (.docx) question bank to the Introduction to Electrical Engineering course.
         </p>
         <div className="mt-4">
-          <QuestionUpload uploadedCount={uploadedCount} />
+          <QuestionUpload uploadedCount={getUploadedCount()} />
         </div>
-      </main>
+      </section>
+    </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-lg bg-surface-muted px-3 py-2">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 font-semibold">{value}</dd>
     </div>
   );
 }

@@ -3,7 +3,13 @@
 Export the generated ELL 1000 question bank into the Adhyan app.
 
 Produces src/lib/data/ell1000-bank.json:
-    { "topics": [{id,title,blurb,questionIds}], "questions": [{id,prompt,options,explanation}] }
+    { "topics": [{id,title,blurb,questionIds}],
+      "questions": [{id,prompt,options,explanation,instances?}] }
+
+Numerical questions also carry `instances`: extra copies of the SAME question
+produced by re-running its generator with fresh values. Each instance has its
+own computed answer and worked solution, so a per-student variant is a genuinely
+different (and still provably correct) problem — not just reshuffled options.
 
 Unlike the PDF build we do NOT down-convert maths glyphs here — browsers have
 full Unicode fonts, so ⇒ ∝ ∥ ⊕ and subscripts render correctly on screen. We do
@@ -17,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen  # noqa: E402
 
 OUT = os.path.join("src", "lib", "data", "ell1000-bank.json")
+EXTRA_INSTANCES = 5  # re-computed value sets per numerical question
 
 # Short blurb per topic (shown under the topic heading in the teacher view).
 BLURBS = {
@@ -49,6 +56,34 @@ def tidy(text: str) -> str:
     return re.sub(r"(?<=\d)\.0(?![0-9])", "", str(text))
 
 
+def as_json(it):
+    return {
+        "prompt": tidy(it["q"]),
+        "options": [
+            {"id": "abcd"[j], "text": tidy(o), "correct": j == it["answer"]}
+            for j, o in enumerate(it["options"])
+        ],
+        "explanation": tidy(it["sol"]),
+    }
+
+
+def instances_for(it):
+    """Re-run the item's generator to get EXTRA_INSTANCES other value sets."""
+    g = it.get("gen")
+    if g is None:
+        return []
+    seen = {it["q"]}
+    out = []
+    for _ in range(EXTRA_INSTANCES * 15):
+        if len(out) >= EXTRA_INSTANCES:
+            break
+        nxt = g()
+        if nxt and nxt["q"] not in seen:
+            seen.add(nxt["q"])
+            out.append(as_json(nxt))
+    return out
+
+
 def main():
     topics, questions = [], []
     for idx, key in enumerate(gen.TOPICS):
@@ -63,15 +98,11 @@ def main():
         for i, it in enumerate(items, 1):
             qid = f"ell-{key}-q{i:03d}"
             qids.append(qid)
-            questions.append({
-                "id": qid,
-                "prompt": tidy(it["q"]),
-                "options": [
-                    {"id": "abcd"[j], "text": tidy(o), "correct": j == it["answer"]}
-                    for j, o in enumerate(it["options"])
-                ],
-                "explanation": tidy(it["sol"]),
-            })
+            row = {"id": qid, **as_json(it)}
+            extra = instances_for(it)
+            if extra:
+                row["instances"] = extra
+            questions.append(row)
 
         topics.append({
             "id": key,
@@ -89,6 +120,8 @@ def main():
     for t in topics:
         assert len(t["questionIds"]) == 100, (t["id"], len(t["questionIds"]))
     print("all topics have exactly 100 questions")
+    with_inst = sum(1 for q in questions if q.get("instances"))
+    print(f"questions with re-computed instances: {with_inst}")
 
 
 if __name__ == "__main__":

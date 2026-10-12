@@ -1,338 +1,247 @@
 import Link from "next/link";
-import {
-  Award,
-  ChevronRight,
-  Compass,
-  Flame,
-  Library,
-  ListChecks,
-  Play,
-  Sparkles,
-  Target,
-  Trophy,
-  Wand2,
-  Zap,
-} from "lucide-react";
+import { redirect } from "next/navigation";
+import { ArrowRight, ClipboardList, Clock, FileText, Lock, Target } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Ring } from "@/components/ui/ring";
-import { Progress } from "@/components/ui/progress";
-import {
-  getActiveCourseId,
-  getCatalog,
-  getCompletion,
-  getCourse,
-  getGamification,
-  getStatuses,
-  getTestResults,
-  isPlaced,
-} from "@/lib/data/store";
-import { nextActionableLevel, topicMastery } from "@/lib/domain/progression";
-import { APP_MODE, BRAND_TAGLINE } from "@/lib/config";
+import { DonutChart } from "@/components/charts";
+import { Meter, PROFICIENCY_BAR, ProficiencyBadge, formatDuration } from "@/components/tests/bits";
+import { StartTestButton } from "@/components/tests/start-test-button";
+import { requireUser } from "@/lib/server/auth";
+import { ELL_OFFER, getPerformance, listTests } from "@/lib/server/tests";
+import { startTestAction } from "@/app/account-actions";
+import { APP_MODE } from "@/lib/config";
+import { cn } from "@/lib/utils";
 
-export default function DashboardPage() {
-  return APP_MODE === "tests" ? <TestsDashboard /> : <LevelsDashboard />;
-}
+export const metadata = { title: "Dashboard · Adhyan" };
 
-// ───────────────────────── Tests-mode dashboard ─────────────────────────
-function TestsDashboard() {
-  const game = getGamification();
-  const catalog = getCatalog();
-  const results = getTestResults();
+const DONUT = {
+  completed: "#a855f7",
+  inProgress: "#f59e0b",
+  todo: "#14b8c4",
+};
 
-  const totalTests = catalog.reduce((a, c) => a + c.testCount, 0);
-  const completedCount = Object.keys(results).length;
-  const percents = Object.values(results).map((r) => r.bestPercent);
-  const avgBest = percents.length
-    ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length)
-    : 0;
-  const featured = catalog[0]; // ELL 1000
+export default async function DashboardPage() {
+  if (APP_MODE !== "tests") redirect("/learn");
+  const user = await requireUser();
+  const [perf, listing] = await Promise.all([
+    getPerformance(user, ELL_OFFER.id),
+    listTests(user, ELL_OFFER.id),
+  ]);
+  const { tests, paid, offer } = listing!;
+  const firstName = user.fullName.split(" ")[0];
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <Badge variant="primary" className="mb-2">
-          <Sparkles className="h-3.5 w-3.5" /> {BRAND_TAGLINE}
-        </Badge>
-        <h1 className="text-3xl font-black tracking-tight">Ready for your next test?</h1>
-        <p className="mt-1 text-sm font-bold text-muted-foreground">
-          {catalog.length} courses · {totalTests} tests available
-        </p>
-      </div>
+  const completed = tests.filter((t) => t.status === "completed").length;
+  const inProgress = tests.filter((t) => t.status === "in_progress").length;
+  const todo = tests.length - completed - inProgress;
 
-      {/* Hero */}
-      <Card className="overflow-hidden border-0 bg-primary text-primary-foreground">
-        <div className="relative p-6">
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
-          {completedCount === 0 ? (
-            <Onboard
-              badge="Get started"
-              title={featured.title}
-              subtitle="Browse courses and take a timed test — 100 questions each, graded on our servers."
-              href="/learn"
-              cta="Browse courses"
-              icon={<Library className="h-5 w-5" />}
-            />
-          ) : (
-            <Onboard
-              badge={`${completedCount}/${totalTests} tests done`}
-              title="Keep your streak going"
-              subtitle="Jump back into a course and take your next test, or retake one to beat your best."
-              href="/learn"
-              cta="Go to courses"
-              icon={<Play className="h-5 w-5" />}
-            />
-          )}
-        </div>
-      </Card>
+  const nextUp = [
+    ...tests.filter((t) => t.status === "in_progress"),
+    ...tests.filter((t) => t.status === "not_started" && !t.locked),
+    ...tests.filter((t) => t.locked),
+  ].slice(0, 4);
 
-      {/* Stat row */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard icon={Flame} tone="text-streak" value={`${game.streakDays}d`} label="Streak" />
-        <StatCard icon={Zap} tone="text-xp" value={game.xp} label="Total XP" />
-        <StatCard icon={ListChecks} tone="text-primary" value={`${completedCount}/${totalTests}`} label="Tests done" />
-        <StatCard icon={Target} tone="text-success" value={`${avgBest}%`} label="Avg best" />
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        {/* Courses summary */}
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center gap-2 font-bold">
-              <Library className="h-5 w-5 text-primary" /> Your courses
-            </div>
-            <div className="mt-4 space-y-2">
-              {catalog.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/learn/${c.id}`}
-                  className="flex items-center justify-between rounded-lg border bg-surface p-3 transition-colors hover:border-primary/40"
-                >
-                  <span className="text-sm font-bold">{c.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {c.testCount} test{c.testCount === 1 ? "" : "s"}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Badges */}
-        <Card>
-          <div className="p-6">
-            <h3 className="font-bold">Your badges</h3>
-            {game.badges.length ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {game.badges.map((b) => (
-                  <Badge key={b} variant="accent" className="px-3 py-1.5">
-                    <Award className="h-3.5 w-3.5" /> {b}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                No badges yet — finish a test to earn one!
-              </p>
-            )}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-// ───────────────────────── Level-mode dashboard (paused) ─────────────────────────
-function LevelsDashboard() {
-  const game = getGamification();
-  const activeCourseId = getActiveCourseId();
-  const course = getCourse(activeCourseId ?? undefined);
-  const statuses = getStatuses(course.id);
-  const completion = getCompletion(course.id);
-  const placed = activeCourseId ? isPlaced(course.id) : false;
-  const next = nextActionableLevel(course, statuses);
-
-  const dailyGoalXp = 60;
-  const todayXp = Math.min(game.xp % 120, dailyGoalXp);
+  const profile = [...perf.topics]
+    .filter((t) => t.accuracy !== null)
+    .sort((a, b) => b.attempted - a.attempted)
+    .slice(0, 8);
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-bold text-muted-foreground">Welcome back 👋</p>
-        <h1 className="text-3xl font-black tracking-tight">Ready to level up?</h1>
-      </div>
-
-      {/* Continue / onboarding hero */}
-      <Card className="overflow-hidden border-0 bg-primary text-primary-foreground">
-        <div className="relative p-6">
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
-
-          {!activeCourseId ? (
-            <Onboard
-              badge="Get started"
-              title="Find your course"
-              subtitle="Browse the catalog, start a free trial, and we'll place you at the right level."
-              href="/learn"
-              cta="Browse courses"
-              icon={<Compass className="h-5 w-5" />}
-            />
-          ) : !placed ? (
-            <Onboard
-              badge={course.title}
-              title="Take your placement test"
-              subtitle="10 quick questions to find your starting level — skip what you already know."
-              href={`/learn/${course.id}`}
-              cta="Start placement test"
-              icon={<Wand2 className="h-5 w-5" />}
-            />
-          ) : next ? (
-            <Onboard
-              badge={course.title}
-              title={`${next.topic.title} · ${next.level.title}`}
-              subtitle={`Pass ${next.level.passThreshold}% to unlock the next level · ${Math.round(next.level.timeLimitSec / 60)} min timer`}
-              href={`/learn/${course.id}`}
-              cta="Continue learning"
-              icon={<Play className="h-5 w-5" />}
-            />
-          ) : (
-            <Onboard
-              badge={course.title}
-              title="Course complete! 🎉"
-              subtitle="You've mastered every level. Revisit topics to keep your streak alive."
-              href={`/learn/${course.id}`}
-              cta="Review topics"
-              icon={<Sparkles className="h-5 w-5" />}
-            />
-          )}
-        </div>
-      </Card>
-
-      {/* Stat row */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard icon={Flame} tone="text-streak" value={`${game.streakDays}d`} label="Streak" />
-        <StatCard icon={Zap} tone="text-xp" value={game.xp} label="Total XP" />
-        <StatCard icon={Trophy} tone="text-primary" value={`${completion}%`} label="Course done" />
-        <StatCard icon={Award} tone="text-success" value={game.badges.length} label="Badges" />
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        {/* Daily goal */}
-        <Card>
-          <div className="flex items-center gap-4 p-6">
-            <Ring value={(todayXp / dailyGoalXp) * 100} label={`${todayXp}`} sublabel="/ 60 XP" />
-            <div>
-              <div className="flex items-center gap-2 font-bold">
-                <Target className="h-4 w-4 text-primary" /> Daily goal
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {todayXp >= dailyGoalXp
-                  ? "Smashed it! Come back tomorrow to keep the streak."
-                  : `${dailyGoalXp - todayXp} XP to go. One quick level does it.`}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        {/* Left column: welcome + tiles */}
+        <div className="flex flex-col gap-6">
+          <Card className="flex items-center gap-6 p-6">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-semibold tracking-tight">Welcome back, {firstName}</h1>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {perf.avgScore !== null
+                  ? `Your average score is ${perf.avgScore}%. ${perf.avgScore >= 75 ? "Excellent work, keep it up." : perf.avgScore >= 50 ? "Good progress. Target your weak topics next." : "Review the solutions of your last test, then try again."}`
+                  : "You haven't submitted a test yet. Start with a free trial paper to see your analysis."}
               </p>
             </div>
-          </div>
-        </Card>
+            <Ring value={perf.avgScore ?? 0} size={104} stroke={10} label={perf.avgScore !== null ? `${perf.avgScore}%` : "—"} sublabel="avg. score" />
+          </Card>
 
-        {/* Topic mastery */}
-        <Card>
-          <div className="p-6">
-            <h3 className="font-bold">{course.title} mastery</h3>
-            <div className="mt-4 space-y-4">
-              {course.topics.map((t) => (
-                <div key={t.id}>
-                  <div className="mb-1.5 flex justify-between text-sm">
-                    <span className="font-semibold">{t.title}</span>
-                    <span className="text-muted-foreground">{topicMastery(t, statuses)}%</span>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="relative overflow-hidden rounded-xl bg-[#e8a33d] p-5 text-white shadow-sm">
+              <p className="pr-8 text-sm font-medium text-white/90">Tests completed</p>
+              <p className="mt-6 text-4xl font-semibold tabular-nums">
+                {perf.completedTests}
+                <span className="text-lg text-white/80"> / {offer.testCount}</span>
+              </p>
+              <ClipboardList className="absolute right-3 top-3 h-7 w-7 text-white/30 sm:right-4 sm:top-4 sm:h-10 sm:w-10" />
+            </div>
+            <div className="relative overflow-hidden rounded-xl bg-primary p-5 text-white shadow-sm">
+              <p className="pr-8 text-sm font-medium text-white/90">Questions solved</p>
+              <p className="mt-6 text-4xl font-semibold tabular-nums">{perf.questionsSolved}</p>
+              <Target className="absolute right-3 top-3 h-7 w-7 text-white/30 sm:right-4 sm:top-4 sm:h-10 sm:w-10" />
+            </div>
+          </div>
+        </div>
+
+        {/* Learner profile: topic accuracy */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Topic proficiency</h2>
+            <Link href="/analytics" className="text-sm font-medium text-primary hover:underline">
+              All topics
+            </Link>
+          </div>
+          {profile.length ? (
+            <div className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+              {profile.map((t) => (
+                <div key={t.topicId} className="text-sm">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-[13px] font-medium">{t.title}</span>
+                    <span className="tabular-nums text-muted-foreground">{t.accuracy}%</span>
                   </div>
-                  <Progress value={topicMastery(t, statuses)} />
+                  <div className="mt-1.5">
+                    <Meter value={t.accuracy ?? 0} className={PROFICIENCY_BAR[t.level]} />
+                  </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="mt-5 text-sm text-muted-foreground">
+              Accuracy for each of the {offer.topicCount} topics appears here after your first test.
+            </p>
+          )}
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Best performance */}
+        <Card className="overflow-hidden">
+          <div className="p-6 pb-4">
+            <h2 className="font-semibold">Best performance</h2>
+          </div>
+          {perf.best.length ? (
+            <table className="w-full text-sm">
+              <thead className="border-y bg-surface-muted/60 text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-6 py-2.5 font-medium">Test</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Score</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Accuracy</th>
+                  <th className="px-6 py-2.5 font-medium">Proficiency</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {perf.best.map((b) => (
+                  <tr key={b.attemptId}>
+                    <td className="px-6 py-3">
+                      <Link href={`/results/${b.attemptId}`} className="font-medium hover:text-primary">
+                        {b.title}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums">{b.score}%</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{b.accuracy}%</td>
+                    <td className="px-6 py-3"><ProficiencyBadge level={b.level} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="px-6 pb-6 text-sm text-muted-foreground">Your top results will be listed here.</p>
+          )}
+          <div className="border-t px-6 py-3 text-center">
+            <Link href="/analytics" className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+              View all <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </Card>
+
+        {/* Test distribution */}
+        <Card className="p-6">
+          <h2 className="font-semibold">Test distribution</h2>
+          <div className="mt-4 flex flex-col items-center gap-8 sm:flex-row sm:justify-around">
+            <DonutChart
+              centerValue={offer.testCount}
+              centerLabel="tests"
+              data={[
+                { name: "Completed", value: completed, color: DONUT.completed },
+                { name: "In progress", value: inProgress, color: DONUT.inProgress },
+                { name: "To do", value: todo, color: DONUT.todo },
+              ]}
+            />
+            <ul className="space-y-4">
+              {[
+                ["Completed", completed, DONUT.completed],
+                ["In progress", inProgress, DONUT.inProgress],
+                ["To do", todo, DONUT.todo],
+              ].map(([k, v, c]) => (
+                <li key={k as string} className="flex items-center gap-3">
+                  <span className="h-3.5 w-3.5 rounded" style={{ background: c as string }} />
+                  <span className="w-28 text-sm text-muted-foreground">{k}</span>
+                  <span className="text-2xl font-semibold tabular-nums">{String(v).padStart(2, "0")}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </Card>
       </div>
 
-      {/* Badges */}
-      <Card>
-        <div className="p-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">Your badges</h3>
-            <Link
-              href="/progress"
-              className="flex items-center text-sm font-bold text-primary hover:underline"
-            >
-              View all <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-          {game.badges.length ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {game.badges.map((b) => (
-                <Badge key={b} variant="accent" className="px-3 py-1.5">
-                  <Award className="h-3.5 w-3.5" /> {b}
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">
-              No badges yet — clear your first level to earn one!
-            </p>
+      {/* Tests for you to take */}
+      <section>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Tests for you to take</h2>
+          <Link href={`/learn/${offer.id}`} className="text-sm font-medium text-primary hover:underline">
+            All tests
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {nextUp.map((t, i) => {
+            const band = ["bg-[#22a06b]", "bg-primary", "bg-[#e8a33d]", "bg-[#2f6fb8]"][i % 4];
+            return (
+              <Card key={t.index} className="flex flex-col overflow-hidden">
+                <div className={cn("flex items-center justify-between px-4 py-2 text-xs font-medium text-white", t.locked ? "bg-muted-foreground" : band)}>
+                  <span>{offer.subject}</span>
+                  <span>{t.locked ? "Locked" : t.trial ? "Free trial" : t.status === "in_progress" ? "In progress" : "Full test"}</span>
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <h3 className="font-semibold">{t.title}</h3>
+                  <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <dt className="text-muted-foreground">Questions</dt>
+                      <dd className="mt-0.5 inline-flex items-center gap-1 font-medium"><FileText className="h-3.5 w-3.5" /> {t.questionCount}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Time</dt>
+                      <dd className="mt-0.5 inline-flex items-center gap-1 font-medium"><Clock className="h-3.5 w-3.5" /> {formatDuration(t.durationSec)}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-4 flex-1" />
+                  {t.locked ? (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/checkout/${offer.id}?plan=full`}><Lock className="h-3.5 w-3.5" /> Unlock · ₹{offer.prices.full.toLocaleString("en-IN")}</Link>
+                    </Button>
+                  ) : (
+                    <StartTestButton
+                      title={t.trial ? `${t.title} · Free trial` : t.title}
+                      questionCount={t.questionCount}
+                      durationSec={t.durationSec}
+                      topicCount={offer.topicCount}
+                      trial={t.trial}
+                      resume={t.status === "in_progress"}
+                      variant="outline"
+                      className="h-9 w-full"
+                      action={startTestAction.bind(null, offer.id, "full", t.index)}
+                    />
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+          {nextUp.length === 0 && (
+            <Card className="p-6 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
+              {paid ? "You've attempted every test. Retake any test for a fresh paper." : "You've completed both trial papers."}{" "}
+              <Link href={`/learn/${offer.id}`} className="font-medium text-primary hover:underline">
+                Go to tests
+              </Link>
+            </Card>
           )}
         </div>
-      </Card>
+      </section>
     </div>
-  );
-}
-
-function Onboard({
-  badge,
-  title,
-  subtitle,
-  href,
-  cta,
-  icon,
-}: {
-  badge: string;
-  title: string;
-  subtitle: string;
-  href: string;
-  cta: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <>
-      <Badge className="bg-white/20 text-white">
-        <Sparkles className="h-3.5 w-3.5" /> {badge}
-      </Badge>
-      <h2 className="relative mt-3 text-2xl font-black">{title}</h2>
-      <p className="relative mt-1 text-sm text-primary-foreground/80">{subtitle}</p>
-      <Button asChild variant="accent" size="lg" className="relative mt-5">
-        <Link href={href}>
-          {icon} {cta}
-        </Link>
-      </Button>
-    </>
-  );
-}
-
-function StatCard({
-  icon: Icon,
-  value,
-  label,
-  tone,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  value: React.ReactNode;
-  label: string;
-  tone: string;
-}) {
-  return (
-    <Card>
-      <div className="flex flex-col items-center gap-1 p-4 text-center">
-        <Icon className={`h-6 w-6 ${tone}`} />
-        <div className="text-2xl font-black">{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-      </div>
-    </Card>
   );
 }

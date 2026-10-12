@@ -6,6 +6,36 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "rdv",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Duke/Desktop/rdv-main-main", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "yasb-1-old-flask",
+      "runtimeExecutable": "C:/Users/Duke/Desktop/yasb-1-old-tech-old-ui/llm_api/.venv/Scripts/python.exe",
+      "runtimeArgs": ["C:/Users/Duke/Desktop/yasb-1-old-tech-old-ui/llm_api/app.py"],
+      "port": 8001
+    },
+    {
+      "name": "yasb-1-old-tech-old-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Duke/Desktop/yasb-1-old-tech-old-ui", "run", "dev"],
+      "port": 8080
+    },
+    {
+      "name": "yasb-2-new-tech-new-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "C:/Users/Duke/Desktop/yasb-2-new-tech-new-ui/apps/web", "exec", "next", "dev", "-p", "8002"],
+      "port": 8002
+    },
+    {
+      "name": "yasb-3-new-tech-old-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "C:/Users/Duke/Desktop/yasb-3-new-tech-old-ui", "dev"],
+      "port": 8000
     }
   ]
 }

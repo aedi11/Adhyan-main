@@ -107,6 +107,7 @@ def uniq(gen, n, seen):
         item = gen()
         if item and item["q"] not in seen:
             seen.add(item["q"])
+            item["gen"] = gen  # lets the app exporter re-run it for variants
             out.append(item)
     return out
 
@@ -383,6 +384,7 @@ def batch(gens, target, _=0):
             item = g()
             if item and item["q"] not in seen:
                 seen.add(item["q"])
+                item["gen"] = g  # lets the app exporter re-run it for variants
                 out.append(item)
         tries += 1
     return out

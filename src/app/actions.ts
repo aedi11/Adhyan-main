@@ -10,13 +10,13 @@ import {
   resetDemo,
   startAttempt,
   startPlacement,
-  startTest,
   submitAttempt,
   type SubmitOutcome,
 } from "@/lib/data/store";
 import type { SubmittedAnswer } from "@/lib/domain/grading";
 import { parseQuestionsFromText } from "@/lib/parse/docx-questions";
 import { QUESTIONS_PER_TEST } from "@/lib/config";
+import { requireTeacher } from "@/lib/server/auth";
 
 /** Begin a timed level attempt and navigate to the quiz player. */
 export async function beginQuiz(levelId: string) {
@@ -53,8 +53,9 @@ export async function gradeQuiz(
 
 /** Teacher tool: generate fresh sample variants for a question (live preview). */
 export async function previewQuestionVariants(questionId: string) {
+  await requireTeacher();
   const { previewVariants } = await import("@/lib/data/store");
-  return previewVariants(questionId, 3);
+  return previewVariants(questionId, 4);
 }
 
 export async function resetDemoAction() {
@@ -64,12 +65,6 @@ export async function resetDemoAction() {
 }
 
 // ───────────────────────── Tests (upload mode) ─────────────────────────
-
-/** Begin a timed test and navigate to the quiz player. */
-export async function startTestAction(testId: string) {
-  const attempt = startTest(testId);
-  redirect(`/quiz/${attempt.attemptId}`);
-}
 
 export interface UploadState {
   ok: boolean;
@@ -88,6 +83,7 @@ export async function uploadQuestionsDocx(
   _prev: UploadState,
   formData: FormData,
 ): Promise<UploadState> {
+  await requireTeacher();
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, message: "Choose a .docx file to upload." };
@@ -133,6 +129,7 @@ export async function uploadQuestionsDocx(
 
 /** Remove all uploaded questions and their test results. */
 export async function clearUploadedAction() {
+  await requireTeacher();
   clearUploadedQuestions();
   revalidatePath("/tests");
   revalidatePath("/teacher");

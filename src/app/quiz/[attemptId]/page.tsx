@@ -1,22 +1,24 @@
-import { notFound } from "next/navigation";
-import { getAttemptView } from "@/lib/data/store";
-import { QuizPlayer } from "@/components/quiz/quiz-player";
+import { notFound, redirect } from "next/navigation";
+import { requireUser } from "@/lib/server/auth";
+import { getPlayerView } from "@/lib/server/tests";
+import { ExamPlayer } from "@/components/quiz/exam-player";
 
-export default async function QuizPage({
-  params,
-}: {
-  params: Promise<{ attemptId: string }>;
-}) {
+export const metadata = { title: "Test in progress · Adhyan" };
+
+export default async function QuizPage({ params }: { params: Promise<{ attemptId: string }> }) {
   const { attemptId } = await params;
-  const view = getAttemptView(attemptId);
+  const user = await requireUser();
+  const view = await getPlayerView(user, attemptId);
   if (!view) notFound();
+  if (view === "submitted") redirect(`/results/${attemptId}`);
 
   return (
-    <QuizPlayer
+    <ExamPlayer
       attemptId={view.attemptId}
-      levelTitle={view.levelTitle}
+      title={view.title}
       remainingSec={view.remainingSec}
       variants={view.variants}
+      initialAnswers={view.answers}
     />
   );
 }

@@ -13,6 +13,7 @@
  */
 import type {
   AuthoredQuestion,
+  QuestionType,
   PublicVariant,
   QuestionVariant,
   VariableSpec,
@@ -87,65 +88,160 @@ function numericDistractors(correct: number, rand: () => number): number[] {
   return shuffle([...candidates], rand).slice(0, 3);
 }
 
+/** "12.5 Ω" → { value: 12.5, unit: "Ω" }; null when the text isn't a plain number. */
+export function parseNumeric(text: string): { value: number; unit: string } | null {
+  const m = /^\s*(-?\d+(?:\.\d+)?)\s*(.*?)\s*$/.exec(text);
+  if (!m) return null;
+  return { value: Number(m[1]), unit: m[2] };
+}
+
 /**
- * Generate a deterministic variant. `renderAs` lets the engine choose a format
- * from the question's allowedTransforms; if omitted it picks one by seed.
+ * Formats a choice question can be faithfully rendered in, derived from its
+ * options (never guessed by AI):
+ *   - single      always
+ *   - true_false  always (the statement pairs the stem with one option)
+ *   - integer     only when every option is a number in the same unit, so the
+ *                 answer can be typed in and graded numerically (never for
+ *                 number-system conversions)
+ */
+const NUMBER_SYSTEM = /hexadecimal|binary|octal|BCD|gray code/i;
+
+export function choiceTransforms(options: { text: string }[], prompt = ""): QuestionType[] {
+  const out: QuestionType[] = ["single", "true_false"];
+  // Base-n conversions (e.g. hex "C06") can't be typed into a decimal box.
+  if (options.length >= 2 && !hasPositionalOptions(options) && !NUMBER_SYSTEM.test(prompt)) {
+    const parsed = options.map((o) => parseNumeric(o.text));
+    if (parsed.every(Boolean) && new Set(parsed.map((p) => p!.unit)).size === 1) {
+      out.push("integer");
+    }
+  }
+  return out;
+}
+
+/** Pick the rendered format: single-choice half the time, the rest spread evenly. */
+function pickFormat(allowed: QuestionType[], rand: () => number): QuestionType {
+  if (allowed.length === 1) return allowed[0];
+  const others = allowed.filter((t) => t !== "single");
+  if (allowed.includes("single") && rand() < 0.5) return "single";
+  return others[Math.floor(rand() * others.length)] ?? allowed[0];
+}
+
+/** Turn a stem + candidate answer into a statement to judge as true or false. */
+function toStatement(prompt: string, answer: string): string {
+  const stem = prompt.trim();
+  if (/[:\-–—]$/.test(stem)) return `${stem.replace(/[:\-–—]$/, "").trimEnd()}: ${answer}.`;
+  return `${stem}\nProposed answer: ${answer}`;
+}
+
+/**
+ * Generate a deterministic variant: (1) pick a value set — the base question or
+ * one of its pre-computed instances, each with its own correct answer and
+ * solution; (2) pick a format the question supports; (3) shuffle options.
  */
 export function generateVariant(q: AuthoredQuestion, seed: number): QuestionVariant {
   const rand = rng(seed);
 
-  // --- Resolve parameterized variables (path A) ---
+  // --- Path A1: pick a pre-computed value set (numerical bank questions) ---
+  let basePrompt = q.prompt;
+  let baseOptions = q.options;
+  let explanation = q.explanation;
+  if (q.instances?.length) {
+    const k = Math.floor(rand() * (q.instances.length + 1));
+    if (k > 0) {
+      const inst = q.instances[k - 1];
+      basePrompt = inst.prompt;
+      baseOptions = inst.options;
+      explanation = inst.explanation ?? explanation;
+    }
+  }
+
+  // --- Path A2: resolve parameterized variables (authored templates) ---
   const vars: Record<string, number> = {};
   if (q.variables?.length) {
     for (const spec of q.variables) vars[spec.name] = pickVarValue(spec, rand);
   }
 
-  // --- Determine the canonical correct value/options ---
   let canonicalValue: string | number | undefined = q.answerValue;
   if (q.answerFormula) {
     canonicalValue = Math.round(safeEval(q.answerFormula, vars) * 1e6) / 1e6;
   }
 
-  const prompt = fillPlaceholders(q.prompt, vars);
+  const prompt = fillPlaceholders(basePrompt, vars);
+  if (explanation) explanation = fillPlaceholders(explanation, vars);
 
-  // --- Choose the rendered format (path B) ---
+  // --- Path B: choose the rendered format ---
   const allowed = q.allowedTransforms.length ? q.allowedTransforms : [q.baseType];
-  const renderedType = allowed[Math.floor(rand() * allowed.length)];
+  let renderedType = pickFormat(allowed, rand);
 
-  // Numeric / fill rendering
+  let optionTexts: { text: string; correct: boolean }[] = baseOptions?.length
+    ? baseOptions.map((o) => ({ text: fillPlaceholders(o.text, vars), correct: o.correct }))
+    : [];
+
+  // A re-computed instance must still support the chosen format.
+  if (renderedType === "integer" && baseOptions?.length && !choiceTransforms(optionTexts, prompt).includes("integer")) {
+    renderedType = "single";
+  }
+
+  // Numeric / short-answer rendering
   if (renderedType === "integer" || renderedType === "fill_blank") {
-    const value =
-      canonicalValue ??
-      (q.options?.find((o) => o.correct)?.text ?? "");
+    const correctText = optionTexts.find((o) => o.correct)?.text;
+    const parsed = correctText ? parseNumeric(correctText) : null;
+    if (parsed) {
+      const unit = parsed.unit || undefined;
+      return {
+        questionId: q.id,
+        seed,
+        renderedType: "integer",
+        prompt,
+        media: q.media,
+        unit,
+        answerKey: { value: parsed.value, unit },
+        explanation,
+      };
+    }
     return {
       questionId: q.id,
       seed,
       renderedType,
       prompt,
       media: q.media,
-      answerKey: { value },
-      explanation: q.explanation,
+      answerKey: { value: canonicalValue ?? correctText ?? "" },
+      explanation,
     };
   }
 
-  // Choice rendering (single / multiple / true_false)
-  let optionTexts: { text: string; correct: boolean }[];
-
-  if (q.options?.length) {
-    optionTexts = q.options.map((o) => ({
-      text: fillPlaceholders(o.text, vars),
-      correct: o.correct,
-    }));
-  } else if (canonicalValue !== undefined) {
+  if (!optionTexts.length && canonicalValue !== undefined) {
     // Build choice options from a numeric canonical answer + distractors.
     const correctNum = Number(canonicalValue);
-    const distractors = numericDistractors(correctNum, rand);
     optionTexts = [
       { text: String(canonicalValue), correct: true },
-      ...distractors.map((d) => ({ text: String(d), correct: false })),
+      ...numericDistractors(correctNum, rand).map((d) => ({ text: String(d), correct: false })),
     ];
-  } else {
-    optionTexts = [];
+  }
+
+  // True / false: pair the stem with the right answer or one distractor.
+  if (renderedType === "true_false" && optionTexts.length >= 2) {
+    const correct = optionTexts.filter((o) => o.correct);
+    const wrong = optionTexts.filter((o) => !o.correct);
+    const showCorrect = !wrong.length || rand() < 0.5;
+    const pool = showCorrect ? correct : wrong;
+    const shown = pool[Math.floor(rand() * pool.length)];
+    const truth = correct.map((o) => o.text).join(", ");
+    return {
+      questionId: q.id,
+      seed,
+      renderedType,
+      prompt: toStatement(prompt, shown.text),
+      media: q.media,
+      options: [
+        { id: "true", text: "True" },
+        { id: "false", text: "False" },
+      ],
+      answerKey: { optionIds: [showCorrect ? "true" : "false"] },
+      explanation: showCorrect
+        ? explanation
+        : `The correct answer is ${truth}, not ${shown.text}.${explanation ? ` ${explanation}` : ""}`,
+    };
   }
 
   // For single-choice rendering, keep exactly one correct option.
@@ -178,7 +274,7 @@ export function generateVariant(q: AuthoredQuestion, seed: number): QuestionVari
     media: q.media,
     options: shuffled.map(({ id, text }) => ({ id, text })),
     answerKey: { optionIds: shuffled.filter((o) => o.correct).map((o) => o.id) },
-    explanation: q.explanation,
+    explanation,
   };
 }
 
@@ -191,5 +287,6 @@ export function toPublicVariant(v: QuestionVariant): PublicVariant {
     prompt: v.prompt,
     media: v.media,
     options: v.options,
+    unit: v.unit,
   };
 }

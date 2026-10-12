@@ -96,7 +96,7 @@ function db() {
 }
 
 /** Look up an authored question across all banks (ELL 1000, demo seed, uploads). */
-function getQuestion(qid: string): AuthoredQuestion | undefined {
+export function getQuestion(qid: string): AuthoredQuestion | undefined {
   return (
     ELL1000_BY_ID.get(qid) ??
     DEMO_QUESTIONS[qid] ??
@@ -324,15 +324,19 @@ export interface SubmitOutcome {
   placement?: PlacementOutcome;
 }
 
-function answerKeyToText(v: QuestionVariant): string {
-  if (v.answerKey.value !== undefined) return String(v.answerKey.value);
+export function answerKeyToText(v: QuestionVariant): string {
+  if (v.answerKey.value !== undefined) {
+    return [v.answerKey.value, v.answerKey.unit].filter((x) => x !== undefined && x !== "").join(" ");
+  }
   return (v.answerKey.optionIds ?? [])
     .map((id) => v.options?.find((o) => o.id === id)?.text ?? id)
     .join(", ");
 }
 
-function submittedToText(v: QuestionVariant, ans: SubmittedAnswer): string {
-  if (ans.kind === "value") return ans.value || "—";
+export function submittedToText(v: QuestionVariant, ans: SubmittedAnswer): string {
+  if (ans.kind === "value") {
+    return ans.value.trim() ? [ans.value.trim(), v.unit].filter(Boolean).join(" ") : "—";
+  }
   return (
     ans.optionIds.map((id) => v.options?.find((o) => o.id === id)?.text ?? id).join(", ") || "—"
   );
@@ -696,7 +700,7 @@ export function getTestsForCourse(courseId: string): TestMeta[] {
 }
 
 /** Deterministic shuffle used for per-student topic sampling. */
-function seededShuffle<T>(arr: T[], seed: number): T[] {
+export function seededShuffle<T>(arr: T[], seed: number): T[] {
   let a = seed >>> 0;
   const rand = () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -738,7 +742,7 @@ export function topicQuota(testIndex: number): number[] {
  * its quota (never zero), seeded per attempt so two students get different
  * questions while the whole syllabus stays covered. Total = TEST_QUESTION_COUNT.
  */
-function selectEll100Questions(attemptId: string, testIndex: number): string[] {
+export function selectEll100Questions(attemptId: string, testIndex: number): string[] {
   const quota = topicQuota(testIndex);
   const picks: string[] = [];
   ELL1000_TOPICS.forEach((t, i) => {
@@ -840,6 +844,7 @@ export interface PreviewVariant {
   renderedType: string;
   options?: { id: string; text: string }[];
   correctAnswer: string;
+  explanation?: string;
 }
 
 export function previewVariants(questionId: string, count = 3): PreviewVariant[] {
@@ -852,6 +857,7 @@ export function previewVariants(questionId: string, count = 3): PreviewVariant[]
       renderedType: v.renderedType,
       options: v.options,
       correctAnswer: answerKeyToText(v),
+      explanation: v.explanation,
     };
   });
 }

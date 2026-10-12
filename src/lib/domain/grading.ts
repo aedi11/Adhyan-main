@@ -21,13 +21,15 @@ export function gradeAnswer(variant: QuestionVariant, answer: SubmittedAnswer): 
     if (answer.kind !== "value") return false;
     const given = answer.value;
     if (typeof key.value === "number") {
-      const n = parseFloat(given);
+      const n = parseFloat(given.replace(/,/g, ""));
       if (Number.isNaN(n)) return false;
-      // Exact match…
-      if (Math.abs(n - key.value) < 1e-6) return true;
-      // …or accept a student's answer rounded to 2 decimals, so repeating
-      // decimals (e.g. 166.6667 → "166.67") aren't unfairly marked wrong.
-      return Math.round(n * 100) === Math.round(key.value * 100);
+      // Precision-based match: the answer must agree with the key to the
+      // key's own decimal places (±half a unit in the last place). So 194
+      // accepts 194 but not 195, and 16.67 accepts 16.67 or 16.667. A
+      // percentage tolerance is unsafe: some distractors are only ±1 apart.
+      const decimals = (String(key.value).split(".")[1] ?? "").length;
+      const tol = 0.5 * 10 ** -decimals;
+      return Math.abs(n - key.value) <= tol + 1e-9;
     }
     return normalizeText(given) === normalizeText(String(key.value));
   }

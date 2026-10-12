@@ -9,7 +9,8 @@
  *      Quiz-I, several of which carry circuit figures. These are folded into the
  *      matching generated topics so the figures are not lost.
  */
-import type { AuthoredQuestion } from "@/lib/domain/types";
+import type { AuthoredQuestion, QuestionInstance } from "@/lib/domain/types";
+import { choiceTransforms } from "@/lib/domain/transform";
 import bank from "./ell1000-bank.json";
 import { ELL100_QUESTIONS } from "./ell100";
 import { ELL100_TOPICS as LEGACY_TOPICS } from "./ell100-topics";
@@ -42,19 +43,26 @@ const generated: AuthoredQuestion[] = (bank.questions as {
   prompt: string;
   options: { id: string; text: string; correct: boolean }[];
   explanation: string;
+  instances?: QuestionInstance[];
 }[]).map((q) => ({
   id: q.id,
   levelId: "",
   prompt: q.prompt,
   baseType: "single",
   difficulty: 1,
-  allowedTransforms: ["single"],
+  allowedTransforms: choiceTransforms(q.options, q.prompt),
   options: q.options,
   explanation: q.explanation,
+  instances: q.instances,
 }));
 
+/** Original quiz-paper questions, opened up to every format their options support. */
+const legacy: AuthoredQuestion[] = ELL100_QUESTIONS.map((q) =>
+  q.options?.length ? { ...q, allowedTransforms: choiceTransforms(q.options, q.prompt) } : q,
+);
+
 /** Every ELL 1000 question (generated + the original quiz paper). */
-export const ELL1000_QUESTIONS: AuthoredQuestion[] = [...generated, ...ELL100_QUESTIONS];
+export const ELL1000_QUESTIONS: AuthoredQuestion[] = [...generated, ...legacy];
 
 /** Topics with the legacy quiz questions appended to their matching topic. */
 export const ELL1000_TOPICS: BankTopic[] = (bank.topics as BankTopic[]).map((t) => {
